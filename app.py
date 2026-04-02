@@ -284,6 +284,25 @@ if "_enrich_sel_search" in st.session_state and "last_result" in st.session_stat
         provider = ApolloProvider(api_key=st.session_state.get("last_provider_key") or api_key or None)
         with st.spinner(f"Enriching {len(to_enrich)} selected people..."):
             enriched, raw_debug = enrich_filtered(provider, cache_key, result.company, result.employees, to_enrich)
+
+        # Reload from updated cache and refresh session state
+        updated_cache = load_from_cache(cache_key)
+        if updated_cache:
+            company, all_employees = rebuild_from_cache(updated_cache)
+            keywords = result.role_keywords
+            filtered = [e for e in all_employees if e.matches_role(keywords)] if keywords else all_employees
+            from linkedin_lookup.models import SearchResult
+            updated_result = SearchResult(
+                company=company,
+                employees=all_employees,
+                filtered_employees=filtered,
+                role_keywords=keywords,
+                total_matches=len(all_employees),
+            )
+            updated_result.from_cache = True
+            updated_result.cache_age_days = 0
+            st.session_state["last_result"] = updated_result
+
         st.success(f"✅ Enriched {len(to_enrich)} people! Data updated.")
         if raw_debug:
             with st.expander("🔍 Debug: Raw Apollo enrichment responses", expanded=False):
