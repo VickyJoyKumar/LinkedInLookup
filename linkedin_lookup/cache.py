@@ -85,6 +85,7 @@ def rebuild_from_cache(cached: dict) -> tuple[CompanyInfo, list[Employee]]:
             email_status=e.get("email_status", ""),
             headline=e.get("headline", ""),
             seniority=e.get("seniority", ""),
+            employment_history=e.get("employment_history", []),
             enriched=e.get("enriched", False),
         ))
     return company, employees

@@ -19,6 +19,7 @@ class Employee:
     email_status: str = ""
     headline: str = ""
     seniority: str = ""
+    employment_history: list = field(default_factory=list)  # list of dicts: org_name, title, start_date, end_date, description, current
     enriched: bool = False
 
     def matches_role(self, keywords: list[str]) -> bool:

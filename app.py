@@ -127,7 +127,7 @@ def _display_results(company, all_employees, filtered_employees, keywords, sourc
         st.info(f"💡 {not_enriched} results have limited data (obfuscated names, no email/LinkedIn). "
                 f"**Enrich** below to get full names, work emails, personal emails, and LinkedIn URLs for outreach.")
 
-    tab_filtered, tab_full = st.tabs(["🎯 Filtered Results", "📋 All Cached Employees"])
+    tab_filtered, tab_full, tab_profile = st.tabs(["🎯 Filtered Results", "📋 All Cached Employees", "👤 Profile Analysis"])
 
     with tab_filtered:
         if filtered_employees:
@@ -212,6 +212,87 @@ def _display_results(company, all_employees, filtered_employees, keywords, sourc
             )
         else:
             st.info("No full employee data available.")
+
+    with tab_profile:
+        enriched_employees = [e for e in filtered_employees if e.enriched]
+        if not enriched_employees:
+            st.info("No enriched employees yet. Enrich employees first to see their profile analysis.")
+        else:
+            st.markdown(f"**{len(enriched_employees)} enriched profile(s) available for analysis**")
+
+            for idx, emp in enumerate(enriched_employees):
+                with st.expander(f"👤 {emp.name} — {emp.title}" + (f" @ {emp.employer}" if emp.employer else ""), expanded=(idx == 0)):
+                    # --- Header ---
+                    col_info, col_contact = st.columns([2, 1])
+                    with col_info:
+                        st.markdown(f"### {emp.name}")
+                        if emp.headline:
+                            st.markdown(f"*{emp.headline}*")
+                        st.markdown(f"**Current:** {emp.title}" + (f" at {emp.employer}" if emp.employer else ""))
+                        if emp.location:
+                            st.markdown(f"📍 {emp.location}")
+                        if emp.seniority:
+                            st.markdown(f"📊 Seniority: **{emp.seniority}**")
+
+                    with col_contact:
+                        st.markdown("**Contact & Outreach**")
+                        if emp.profile_url:
+                            st.markdown(f"🔗 [LinkedIn Profile]({emp.profile_url})")
+                        else:
+                            st.markdown("🔗 LinkedIn: N/A")
+                        if emp.email:
+                            st.markdown(f"📧 Work: {emp.email}" + (f" ({emp.email_status})" if emp.email_status else ""))
+                        if emp.personal_email:
+                            st.markdown(f"📧 Personal: {emp.personal_email}")
+                        if not emp.email and not emp.personal_email:
+                            st.markdown("📧 No email available")
+
+                    # --- Employment History ---
+                    history = getattr(emp, 'employment_history', []) or []
+                    if history:
+                        st.markdown("---")
+                        st.markdown("#### 💼 Work Experience")
+
+                        total_years = 0
+                        companies_set = set()
+
+                        for job in history:
+                            org = job.get("org_name", "Unknown")
+                            title = job.get("title", "")
+                            start = job.get("start_date", "")
+                            end = job.get("end_date", "")
+                            desc = job.get("description", "")
+                            current = job.get("current", False)
+                            companies_set.add(org)
+
+                            # Calculate duration
+                            duration_str = ""
+                            if start:
+                                start_short = start[:7] if len(start) >= 7 else start  # YYYY-MM
+                                end_short = "Present" if current or not end else (end[:7] if len(end) >= 7 else end)
+                                duration_str = f"{start_short} → {end_short}"
+
+                            is_current = " 🟢" if current else ""
+                            st.markdown(f"**{title}** at **{org}**{is_current}")
+                            if duration_str:
+                                st.caption(duration_str)
+                            if desc:
+                                st.markdown(f"> {desc[:500]}{'...' if len(desc) > 500 else ''}")
+
+                        # --- Summary Stats ---
+                        st.markdown("---")
+                        st.markdown("#### 📋 Profile Summary")
+                        col_s1, col_s2, col_s3 = st.columns(3)
+                        col_s1.metric("Companies", len(companies_set))
+                        col_s2.metric("Roles", len(history))
+                        col_s3.metric("Has Contact Info", "✅" if (emp.email or emp.personal_email) else "❌")
+
+                        # Industry diversity note
+                        if len(companies_set) > 1:
+                            st.markdown(f"**Companies worked at:** {', '.join(companies_set)}")
+                    else:
+                        st.markdown("---")
+                        st.caption("No employment history available from Apollo for this person.")
 
 
 # --- Main form ---

@@ -500,6 +500,19 @@ class ApolloProvider(BaseProvider):
                     functions = person.get("functions", []) or []
                     dept_str = ", ".join(departments + functions) if (departments or functions) else ""
 
+                    # Employment history — past and current roles
+                    raw_history = person.get("employment_history", []) or []
+                    employment_history = []
+                    for job in raw_history:
+                        employment_history.append({
+                            "org_name": job.get("organization_name", "") or "",
+                            "title": job.get("title", "") or "",
+                            "start_date": job.get("start_date", "") or "",
+                            "end_date": job.get("end_date", "") or "",
+                            "description": job.get("description", "") or "",
+                            "current": job.get("current", False),
+                        })
+
                     enriched.append(Employee(
                         name=full_name,
                         title=person.get("title", "") or emp.title,
@@ -514,6 +527,7 @@ class ApolloProvider(BaseProvider):
                         email_status=person.get("email_status", "") or "",
                         headline=person.get("headline", "") or "",
                         seniority=person.get("seniority", "") or "",
+                        employment_history=employment_history,
                         enriched=True,
                     ))
                 else:
