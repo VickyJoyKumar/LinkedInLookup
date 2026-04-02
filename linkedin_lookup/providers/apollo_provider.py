@@ -395,7 +395,8 @@ class ApolloProvider(BaseProvider):
         enriched = []
         raw_responses = []
         for emp in employees:
-            if emp.enriched:
+            # Skip if already enriched AND has employment history (fully enriched)
+            if emp.enriched and getattr(emp, 'employment_history', []):
                 enriched.append(emp)
                 continue
             if not emp.apollo_id:
@@ -433,6 +434,7 @@ class ApolloProvider(BaseProvider):
                 person = data.get("person", {}) or {}
 
                 # Log raw response for diagnostics
+                raw_history = person.get("employment_history", []) or []
                 raw_responses.append({
                     "input_name": emp.name,
                     "apollo_id": emp.apollo_id,
@@ -444,6 +446,8 @@ class ApolloProvider(BaseProvider):
                     "headline": person.get("headline"),
                     "seniority": person.get("seniority"),
                     "departments": person.get("departments"),
+                    "employment_history_count": len(raw_history),
+                    "employment_history": raw_history,
                     "contact_keys": list((person.get("contact", {}) or {}).keys()) if person.get("contact") else [],
                 })
                 logger.info(
