@@ -258,18 +258,22 @@ if search_clicked:
                     force_refresh=force_refresh,
                 )
 
-            # Store result in session state for enrichment
+            # Store result in session state so it persists across reruns
             st.session_state["last_result"] = result
             st.session_state["last_cache_key"] = cache_key
             st.session_state["last_provider_key"] = api_key or None
-
-            source_label = "📦 Cache" if getattr(result, 'from_cache', False) else "🌐 Apollo API"
-            _display_results(result.company, result.employees, result.filtered_employees, result.role_keywords, source_label, tab_key="search")
+            st.session_state["show_search_results"] = True
 
         except ValueError as e:
             st.error(f"Configuration error: {e}")
         except Exception as e:
             st.error(f"Error: {e}")
+
+# --- Re-display search results on reruns (checkbox clicks, etc.) ---
+if st.session_state.get("show_search_results") and "last_result" in st.session_state:
+    result = st.session_state["last_result"]
+    source_label = "📦 Cache" if getattr(result, 'from_cache', False) else "🌐 Apollo API"
+    _display_results(result.company, result.employees, result.filtered_employees, result.role_keywords, source_label, tab_key="search")
 
 # --- Handle selective enrichment for search results ---
 if "_enrich_sel_search" in st.session_state and "last_result" in st.session_state:
@@ -323,11 +327,16 @@ else:
         cache_age = get_cache_age_days(selected_domain)
         st.info(f"📦 **{company.name}** — {len(all_employees)} employees cached ({cache_age:.0f} days ago)")
 
+        # Persist filter state in session
         if filter_clicked and history_role:
-            keywords = expand_keywords(history_role)
+            st.session_state["history_keywords"] = expand_keywords(history_role)
+            st.session_state["history_domain"] = selected_domain
+
+        # Display filtered or all employees (persists across reruns)
+        if st.session_state.get("history_domain") == selected_domain and st.session_state.get("history_keywords"):
+            keywords = st.session_state["history_keywords"]
             filtered = [e for e in all_employees if e.matches_role(keywords)]
             _display_results(company, all_employees, filtered, keywords, "📦 Cache (History)", tab_key="history")
-
         elif filter_clicked and not history_role:
             st.warning("Enter a role or keyword to filter.")
         else:
